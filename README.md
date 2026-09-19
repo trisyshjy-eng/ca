@@ -11,19 +11,24 @@
 ## 기술 스택
 
 - **프론트엔드/백엔드**: Next.js 16 (App Router, Server Actions) + TypeScript
-- **데이터베이스**: SQLite + Prisma ORM (운영 전환 시 PostgreSQL로 교체 가능)
+- **데이터베이스**: PostgreSQL + Prisma ORM
 - **인증/권한**: JWT 세션(jose) + bcrypt, 역할(관리자/담당자/조회자) 기반 접근 제어
 - **문서 출력**: PDF(puppeteer-core + 로컬 Edge/Chrome 헤드리스 렌더링), 엑셀(exceljs)
 - **테스트**: Vitest
 
 ## 시작하기
 
+PostgreSQL 데이터베이스가 필요합니다(로컬 설치, Docker, 또는 Neon/Supabase 등 무료 클라우드 Postgres).
+
 ```bash
+cp .env.example .env        # DATABASE_URL, SESSION_SECRET 채우기
 npm install
-npx prisma migrate deploy   # 스키마 적용
+npx prisma migrate dev --name init   # 최초 실행 시 베이스라인 마이그레이션 생성
 npx prisma db seed          # 샘플 데이터(계정 3종 + 예시 품목) 생성
 npm run dev                 # http://localhost:3000
 ```
+
+> 마이그레이션 이력이 아직 없는 상태입니다(스키마를 SQLite → PostgreSQL로 막 전환함). 실제 Postgres에 처음 연결할 때 위 `prisma migrate dev --name init` 명령으로 베이스라인 마이그레이션을 생성해 커밋해 주세요. 이후에는 `prisma migrate dev`(개발)/`prisma migrate deploy`(배포)를 사용합니다.
 
 ### 테스트 계정 (시드 데이터 기준)
 
@@ -33,10 +38,10 @@ npm run dev                 # http://localhost:3000
 | `staff1` | `staff1234` | 담당자 |
 | `viewer1` | `viewer1234` | 조회자 |
 
-### 환경변수 (`.env`)
+### 환경변수 (`.env`, `.env.example` 참고)
 
 ```
-DATABASE_URL="file:./dev.db"
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DBNAME?schema=public"
 SESSION_SECRET="<openssl rand -base64 32 등으로 생성한 랜덤 문자열>"
 ```
 
@@ -99,5 +104,6 @@ src/
 
 ## 알려진 이슈
 
-- 현재 개발 환경(exFAT로 포맷된 외장 드라이브)에서는 Node.js `fs.readlink`가 일반 파일에도 `EISDIR` 오류를 반환하는 파일시스템 이슈로 `next build`(프로덕션 빌드)가 실패합니다. `next dev`는 정상 동작하며 전체 기능은 개발 서버 기준으로 검증되었습니다. NTFS/Linux 환경(예: Vercel, 일반 CI)에서는 빌드가 정상적으로 동작합니다.
-- 인증/RBAC, 원가계산 → 승인 → 발송 전체 플로우, PDF/엑셀 출력, 역할별 접근 제어는 실제 브라우저 및 API 테스트로 검증되었습니다.
+- 현재 개발 환경(exFAT로 포맷된 외장 드라이브)에서는 Node.js `fs.readlink`가 일반 파일에도 `EISDIR` 오류를 반환하는 파일시스템 이슈로 `next build`(프로덕션 빌드)가 실패합니다. `next dev`는 정상 동작하며 전체 기능은 개발 서버 기준으로 검증되었습니다. NTFS/Linux 환경(예: Vercel, GitHub Actions CI)에서는 빌드가 정상적으로 동작함을 CI에서 확인했습니다.
+- 인증/RBAC, 원가계산 → 승인 → 발송 전체 플로우, PDF/엑셀 출력, 역할별 접근 제어는 실제 브라우저 및 API 테스트로 검증되었습니다(전환 전 SQLite 기준). PostgreSQL 전환 후 실제 DB 연결 기준 재검증이 필요합니다.
+- Prisma 마이그레이션 이력이 없는 상태(SQLite용 초기 마이그레이션은 제거함)이므로, CI에서는 `prisma db push`로 스키마를 동기화합니다. 실제 개발 DB에 연결되면 `prisma migrate dev --name init`으로 베이스라인 마이그레이션을 생성해 커밋하고, CI도 `prisma migrate deploy`로 되돌려야 합니다.

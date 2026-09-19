@@ -10,8 +10,23 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: "file:./dev.db"
+      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/ca?schema=public"
       SESSION_SECRET: "ci-only-secret-do-not-use-in-production"
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ca
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - uses: actions/checkout@v4
@@ -27,8 +42,11 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate
 
-      - name: Apply migrations
-        run: npx prisma migrate deploy
+      # No migration history yet (schema was just switched to PostgreSQL).
+      # Once a baseline migration is created with `prisma migrate dev --name init`
+      # against a real dev database, switch this back to `prisma migrate deploy`.
+      - name: Sync database schema
+        run: npx prisma db push
 
       - name: Lint
         run: npm run lint
