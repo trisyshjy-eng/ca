@@ -105,7 +105,20 @@ src/
 
 자세한 구현과 검증은 `src/lib/costEngine.ts` / `src/lib/costEngine.test.ts` 참고.
 
-## 알려진 이슈
+## 알려진 이슈 / TODO
 
-- 현재 개발 환경(exFAT로 포맷된 외장 드라이브)에서는 Node.js `fs.readlink`가 일반 파일에도 `EISDIR` 오류를 반환하는 파일시스템 이슈로 `next build`(프로덕션 빌드)가 실패합니다. `next dev`는 정상 동작하며 전체 기능은 개발 서버 기준으로 검증되었습니다. NTFS/Linux 환경(예: Vercel, GitHub Actions CI)에서는 빌드가 정상적으로 동작함을 CI에서 확인했습니다.
-- 인증/RBAC, 원가계산 → 승인 → 발송 전체 플로우, PDF/엑셀 출력, 역할별 접근 제어, 대시보드/품목 데이터 조회는 실제 Supabase(PostgreSQL) 연결 기준으로 재검증 완료.
+### 배포 전 반드시 처리해야 할 것
+
+- **PDF 생성이 Vercel에서 그대로 동작하지 않음**: `src/lib/pdf.ts`는 로컬에 설치된 Edge/Chrome 실행 파일 경로(`msedge.exe` 등)를 찾아 `puppeteer-core`로 구동합니다. Vercel 서버리스 함수에는 브라우저가 없으므로, 배포 전 [`@sparticuz/chromium`](https://github.com/Sparticuz/chromium) + `puppeteer-core` 조합(서버리스용 경량 Chromium 바이너리)으로 교체해야 합니다. 엑셀 출력(exceljs)은 브라우저에 의존하지 않으므로 영향 없음.
+- **시드 계정 비밀번호가 데모용으로 단순함** (`admin1234` 등): 실제 운영 DB에 그대로 시드하지 말고, 운영 배포 시 관리자 비밀번호를 재설정하거나 시드 스크립트를 운영용으로 분리하세요.
+- Vercel 배포 시 `DATABASE_URL`(풀링)/`DIRECT_URL`(다이렉트)/`SESSION_SECRET` 환경변수를 프로젝트에 등록해야 합니다.
+
+### 기능적으로 미흡한 부분
+
+- **반응형 UI 미세 조정 미완료**: 기본 반응형 CSS(`globals.css`)만 적용되어 있고, 태블릿 폭 기준 실사용 테스트(표 가로 스크롤, 사이드바 접힘 등)는 하지 않았습니다. 스펙의 "PC·태블릿 반응형 지원" 요구사항 대비 추가 점검이 필요합니다.
+- **자동화된 E2E 테스트 없음**: 원가계산 엔진은 Vitest 단위테스트로, 나머지 화면/플로우는 이번 개발 과정에서 curl 기반 API 테스트와 1회 수동 브라우저 테스트로 검증했습니다. 회귀 방지를 위한 Playwright 등 E2E 테스트 스위트는 아직 없습니다.
+
+### 참고 사항 (차단 요소 아님)
+
+- 현재 개발 환경(exFAT로 포맷된 외장 드라이브, `E:` 드라이브)에서는 Node.js `fs.readlink`가 일반 파일에도 `EISDIR` 오류를 반환하는 파일시스템 이슈로 이 머신에서 `next build`가 실패합니다. `next dev`는 정상 동작하며, GitHub Actions CI(Ubuntu/ext4)와 Vercel(Linux)에서는 문제없이 빌드됨을 확인했습니다.
+- 인증/RBAC, 원가계산 → 제안단가 산출 → 승인 → 발송 전체 플로우, PDF/엑셀 출력, 역할별 접근 제어, 마이그레이션은 실제 Supabase(PostgreSQL) 연결 기준으로 검증 완료.
