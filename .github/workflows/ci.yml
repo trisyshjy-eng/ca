@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/ca?schema=public"
+      DIRECT_URL: "postgresql://postgres:postgres@localhost:5432/ca?schema=public"
       SESSION_SECRET: "ci-only-secret-do-not-use-in-production"
 
     services:
@@ -42,11 +43,8 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate
 
-      # No migration history yet (schema was just switched to PostgreSQL).
-      # Once a baseline migration is created with `prisma migrate dev --name init`
-      # against a real dev database, switch this back to `prisma migrate deploy`.
-      - name: Sync database schema
-        run: npx prisma db push
+      - name: Apply migrations
+        run: npx prisma migrate deploy
 
       - name: Lint
         run: npm run lint

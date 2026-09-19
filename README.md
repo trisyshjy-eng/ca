@@ -18,17 +18,15 @@
 
 ## 시작하기
 
-PostgreSQL 데이터베이스가 필요합니다(로컬 설치, Docker, 또는 Neon/Supabase 등 무료 클라우드 Postgres).
+PostgreSQL 데이터베이스가 필요합니다. 현재 Supabase 사용을 기준으로 합니다.
 
 ```bash
-cp .env.example .env        # DATABASE_URL, SESSION_SECRET 채우기
+cp .env.example .env        # DATABASE_URL, DIRECT_URL, SESSION_SECRET 채우기
 npm install
-npx prisma migrate dev --name init   # 최초 실행 시 베이스라인 마이그레이션 생성
+npx prisma migrate deploy   # 마이그레이션 적용 (스키마 변경 시에는 `migrate dev` 사용)
 npx prisma db seed          # 샘플 데이터(계정 3종 + 예시 품목) 생성
 npm run dev                 # http://localhost:3000
 ```
-
-> 마이그레이션 이력이 아직 없는 상태입니다(스키마를 SQLite → PostgreSQL로 막 전환함). 실제 Postgres에 처음 연결할 때 위 `prisma migrate dev --name init` 명령으로 베이스라인 마이그레이션을 생성해 커밋해 주세요. 이후에는 `prisma migrate dev`(개발)/`prisma migrate deploy`(배포)를 사용합니다.
 
 ### 테스트 계정 (시드 데이터 기준)
 
@@ -40,10 +38,15 @@ npm run dev                 # http://localhost:3000
 
 ### 환경변수 (`.env`, `.env.example` 참고)
 
+Supabase는 연결 풀러(pgbouncer)를 앞단에 두므로, 런타임용 풀링 연결(`DATABASE_URL`)과 마이그레이션용 다이렉트 연결(`DIRECT_URL`)을 분리해서 지정합니다. Project Settings → Database에서 두 URL을 확인할 수 있습니다.
+
 ```
-DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DBNAME?schema=public"
+DATABASE_URL="postgresql://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres?pgbouncer=true"
+DIRECT_URL="postgresql://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres"
 SESSION_SECRET="<openssl rand -base64 32 등으로 생성한 랜덤 문자열>"
 ```
+
+> **주의**: 대시보드의 "Direct connection" 문자열(`db.<project-ref>.supabase.co:5432`)은 IPv6 전용이라 IPv4 전용 네트워크에서는 연결이 안 될 수 있습니다(`P1001: Can't reach database server`). 이 경우 `DIRECT_URL`도 위처럼 Session Pooler 호스트(`aws-0-<region>.pooler.supabase.com`)의 5432번 포트를 사용하세요. 비밀번호에 `! @ # $` 등 URL 예약 문자가 있으면 반드시 percent-encoding(`encodeURIComponent`)해야 합니다.
 
 ## 주요 스크립트
 
@@ -105,5 +108,4 @@ src/
 ## 알려진 이슈
 
 - 현재 개발 환경(exFAT로 포맷된 외장 드라이브)에서는 Node.js `fs.readlink`가 일반 파일에도 `EISDIR` 오류를 반환하는 파일시스템 이슈로 `next build`(프로덕션 빌드)가 실패합니다. `next dev`는 정상 동작하며 전체 기능은 개발 서버 기준으로 검증되었습니다. NTFS/Linux 환경(예: Vercel, GitHub Actions CI)에서는 빌드가 정상적으로 동작함을 CI에서 확인했습니다.
-- 인증/RBAC, 원가계산 → 승인 → 발송 전체 플로우, PDF/엑셀 출력, 역할별 접근 제어는 실제 브라우저 및 API 테스트로 검증되었습니다(전환 전 SQLite 기준). PostgreSQL 전환 후 실제 DB 연결 기준 재검증이 필요합니다.
-- Prisma 마이그레이션 이력이 없는 상태(SQLite용 초기 마이그레이션은 제거함)이므로, CI에서는 `prisma db push`로 스키마를 동기화합니다. 실제 개발 DB에 연결되면 `prisma migrate dev --name init`으로 베이스라인 마이그레이션을 생성해 커밋하고, CI도 `prisma migrate deploy`로 되돌려야 합니다.
+- 인증/RBAC, 원가계산 → 승인 → 발송 전체 플로우, PDF/엑셀 출력, 역할별 접근 제어, 대시보드/품목 데이터 조회는 실제 Supabase(PostgreSQL) 연결 기준으로 재검증 완료.
