@@ -1,0 +1,229 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN // 관리자
+  STAFF // 담당자
+  VIEWER // 조회자
+}
+
+enum ProposalStatus {
+  REQUESTED // 접수
+  CALCULATING // 원가계산중
+  PRICED // 제안단가 산출됨
+  APPROVED // 승인
+  SENT // 발송완료
+  REJECTED // 반려
+}
+
+enum MarginType {
+  RATE // 마진율
+  AMOUNT // 마진액
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum OverheadCategory {
+  MANUFACTURING // 제조간접비
+  OUTSOURCING // 외주가공비
+}
+
+enum OverheadBase {
+  MATERIAL_COST // 재료비 대비 %
+  LABOR_COST // 노무비 대비 %
+}
+
+model User {
+  id           String   @id @default(cuid())
+  loginId      String   @unique
+  name         String
+  passwordHash String
+  role         UserRole @default(STAFF)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  proposalRequests ProposalRequest[] @relation("RequestOwner")
+  costCalculations CostCalculation[] @relation("Calculator")
+  approvals        PriceProposal[]   @relation("Approver")
+  historyLogs      HistoryLog[]
+}
+
+model RawMaterial {
+  id             String   @id @default(cuid())
+  name           String // 자재명
+  vendor         String? // 거래처
+  unitCost       Float // 원물원가 (구매 단가, 원)
+  purchaseWeight Float // 구매중량(g)
+  yieldRate      Float // 수율/보존율 (0~1)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  bomEntries ProductBOM[]
+
+  // 계산값(원물중량, 100g당원가)은 저장하지 않고 서비스 레이어에서 계산
+}
+
+model Product {
+  id            String   @id @default(cuid())
+  name          String // 제품명
+  targetWeight  Float // 목표 패키지(구성중량, g)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  bom               ProductBOM[]
+  packagingCosts    PackagingCost[]
+  processes         ProductProcess[]
+  proposalRequests  ProposalRequest[]
+}
+
+model ProductBOM {
+  id            String   @id @default(cuid())
+  productId     String
+  rawMaterialId String
+  groupCode     String // 배합비 슬롯 구분 코드 (예: "소스", "주꾸미", "표고") - 동일 슬롯 내 혼합비율 검증에 사용
+  mixRatio      Float // 배합비 (슬롯의 품목 내 비중, 슬롯 합계 1)
+  blendRatio    Float    @default(1) // 혼합비율 (슬롯 내 세부 산지 분배 비율, 없으면 1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  product     Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  rawMaterial RawMaterial @relation(fields: [rawMaterialId], references: [id])
+
+  @@index([productId])
+  @@index([rawMaterialId])
+}
+
+model PackagingCost {
+  id         String   @id @default(cuid())
+  productId  String
+  name       String // 포장재명
+  unitPrice  Float // 단가
+  quantity   Float // 수량
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+model LaborRate {
+  id           String   @id @default(cuid())
+  processName  String // 공정명
+  hourlyWage   Float // 시간당 임금
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  productProcesses ProductProcess[]
+}
+
+model ProductProcess {
+  id          String   @id @default(cuid())
+  productId   String
+  laborRateId String
+  workHours   Float // 작업시간
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  laborRate LaborRate @relation(fields: [laborRateId], references: [id])
+
+  @@index([productId])
+}
+
+model OverheadRate {
+  id         String            @id @default(cuid())
+  category   OverheadCategory // 구분: 제조간접비/외주가공비
+  base       OverheadBase // 배부 기준: 재료비/노무비 대비 %
+  name       String // 항목명 (배부비/유틸리티비/설비간접인건비/전력비 등)
+  rate       Float // 배부율 (0~1)
+  isActive   Boolean           @default(true)
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+}
+
+model ProposalRequest {
+  id             String         @id @default(cuid())
+  companyName    String // 업체명
+  contactPerson  String // 담당자
+  productId      String
+  requestedById  String
+  requestDate    DateTime // 요청일
+  requestedQty   Float // 요청수량
+  status         ProposalStatus @default(REQUESTED)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  product     Product           @relation(fields: [productId], references: [id])
+  requestedBy User              @relation("RequestOwner", fields: [requestedById], references: [id])
+  calculations CostCalculation[]
+}
+
+model CostCalculation {
+  id                String   @id @default(cuid())
+  proposalRequestId String
+  materialCost      Float // 재료비
+  laborCost         Float // 노무비
+  overheadCost      Float // 제조간접비
+  packagingCost     Float // 포장비
+  manufacturingCost Float // 제조원가 = 재료비+노무비+제조간접비+포장비
+  outsourcingCost   Float    @default(0) // 외주가공비
+  totalCost         Float // 총원가 = 제조원가 + 외주가공비
+  calculatedById    String
+  calculatedAt      DateTime @default(now())
+
+  proposalRequest ProposalRequest @relation(fields: [proposalRequestId], references: [id], onDelete: Cascade)
+  calculatedBy    User            @relation("Calculator", fields: [calculatedById], references: [id])
+  priceProposals  PriceProposal[]
+
+  @@index([proposalRequestId])
+}
+
+model PriceProposal {
+  id                  String         @id @default(cuid())
+  costCalculationId   String
+  marginType          MarginType // 마진 방식(율/정액)
+  marginValue         Float // 마진율(0~1) 또는 마진액(원)
+  priceBeforeTax      Float // 제안단가(세전)
+  priceAfterTax       Float // 제안단가(세후) = 세전 × 1.1
+  retailPrice         Float? // 결정 소매가 (선택 입력)
+  priceDifference     Float? // 차액 = 결정소매가 - 세후단가
+  priceDifferenceRate Float? // 차액비율 = 차액 ÷ 결정소매가
+  approvalStatus      ApprovalStatus @default(PENDING)
+  approvedById        String?
+  approvedAt          DateTime?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  costCalculation CostCalculation @relation(fields: [costCalculationId], references: [id], onDelete: Cascade)
+  approvedBy      User?           @relation("Approver", fields: [approvedById], references: [id])
+
+  @@index([costCalculationId])
+}
+
+model HistoryLog {
+  id         String   @id @default(cuid())
+  entityType String // 대상 엔티티명 (예: RawMaterial, PriceProposal 등)
+  entityId   String // 대상 엔티티 id
+  beforeData String? // 변경 전 값 (JSON 문자열)
+  afterData  String? // 변경 후 값 (JSON 문자열)
+  changedById String
+  changedAt  DateTime @default(now())
+
+  changedBy User @relation(fields: [changedById], references: [id])
+
+  @@index([entityType, entityId])
+}
