@@ -6,9 +6,12 @@ const CANDIDATE_BROWSER_PATHS = [
   "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
   "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
   "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+  "/usr/bin/google-chrome",
+  "/usr/bin/chromium-browser",
+  "/usr/bin/chromium",
 ];
 
-function findBrowserExecutable(): string {
+function findLocalBrowserExecutable(): string {
   const found = CANDIDATE_BROWSER_PATHS.find((p) => fs.existsSync(p));
   if (!found) {
     throw new Error(
@@ -18,12 +21,32 @@ function findBrowserExecutable(): string {
   return found;
 }
 
-export async function renderHtmlToPdf(html: string): Promise<Buffer> {
+// Vercel (and most serverless platforms) don't ship a browser, and their filesystem
+// only allows writes under /tmp — @sparticuz/chromium provides a Lambda-compatible
+// Chromium binary for that environment. Locally (including this dev machine, which
+// has no Linux Chromium binary to test against), we launch the system's Edge/Chrome.
+const IS_SERVERLESS = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+
+async function launchBrowser() {
   const puppeteer = await import("puppeteer-core");
-  const browser = await puppeteer.launch({
-    executablePath: findBrowserExecutable(),
+
+  if (IS_SERVERLESS) {
+    const chromium = (await import("@sparticuz/chromium")).default;
+    return puppeteer.launch({
+      args: chromium.args,
+      executablePath: await chromium.executablePath(),
+      headless: true,
+    });
+  }
+
+  return puppeteer.launch({
+    executablePath: findLocalBrowserExecutable(),
     headless: true,
   });
+}
+
+export async function renderHtmlToPdf(html: string): Promise<Buffer> {
+  const browser = await launchBrowser();
 
   try {
     const page = await browser.newPage();
