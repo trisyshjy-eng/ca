@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { verifySession } from "@/lib/auth/dal";
 import { getProposalDocumentData } from "@/lib/documents";
+import { calcPriceProposal } from "@/lib/costEngine";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await verifySession();
@@ -19,6 +20,12 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   }
 
   const { proposal, calculation, priceProposal } = data;
+  const marginPreview = calcPriceProposal({
+    totalCost: calculation.totalCost,
+    distributorMarginRate: priceProposal.distributorMarginRate,
+    marginType: priceProposal.marginType,
+    marginValue: priceProposal.marginValue,
+  });
 
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "제조원가 기반 제안단가 산출 시스템";
@@ -43,13 +50,17 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     ["제조원가", Math.round(calculation.manufacturingCost)],
     ["외주가공비", Math.round(calculation.outsourcingCost)],
     ["총원가", Math.round(calculation.totalCost)],
-    ["마진 방식", priceProposal.marginType === "RATE" ? "마진율" : "마진액"],
+    ["제안업체 마진률", `${(priceProposal.distributorMarginRate * 100).toFixed(2)}%`],
+    ["제안업체 마진액(세전)", Math.round(marginPreview.distributorMarginAmount)],
+    ["중간단가", Math.round(marginPreview.distributorPrice)],
+    ["최종 마진 방식", priceProposal.marginType === "RATE" ? "마진율" : "마진액"],
     [
-      "마진 값",
+      "최종 마진 값",
       priceProposal.marginType === "RATE"
         ? `${(priceProposal.marginValue * 100).toFixed(2)}%`
         : Math.round(priceProposal.marginValue),
     ],
+    ["최종 마진액(세전)", Math.round(marginPreview.finalMarginAmount)],
     ["제안단가(세전)", Math.round(priceProposal.priceBeforeTax)],
     ["제안단가(세후)", Math.round(priceProposal.priceAfterTax)],
     ["결정 소매가", priceProposal.retailPrice ? Math.round(priceProposal.retailPrice) : "-"],

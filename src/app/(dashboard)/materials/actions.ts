@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth/dal";
 import { logHistory } from "@/lib/history";
@@ -40,12 +41,14 @@ export async function createRawMaterial(
   }
 
   const created = await prisma.rawMaterial.create({ data: parsed.data });
-  await logHistory({
-    entityType: "RawMaterial",
-    entityId: created.id,
-    after: created,
-    changedById: session.userId,
-  });
+  after(() =>
+    logHistory({
+      entityType: "RawMaterial",
+      entityId: created.id,
+      after: created,
+      changedById: session.userId,
+    })
+  );
 
   revalidatePath("/materials");
   redirect("/materials");
@@ -65,13 +68,15 @@ export async function updateRawMaterial(
   const before = await prisma.rawMaterial.findUnique({ where: { id } });
   const updated = await prisma.rawMaterial.update({ where: { id }, data: parsed.data });
 
-  await logHistory({
-    entityType: "RawMaterial",
-    entityId: id,
-    before,
-    after: updated,
-    changedById: session.userId,
-  });
+  after(() =>
+    logHistory({
+      entityType: "RawMaterial",
+      entityId: id,
+      before,
+      after: updated,
+      changedById: session.userId,
+    })
+  );
 
   revalidatePath("/materials");
   redirect("/materials");
@@ -85,13 +90,15 @@ export async function deleteRawMaterial(formData: FormData) {
   const before = await prisma.rawMaterial.findUnique({ where: { id } });
   await prisma.rawMaterial.update({ where: { id }, data: { isActive: false } });
 
-  await logHistory({
-    entityType: "RawMaterial",
-    entityId: id,
-    before,
-    after: { ...before, isActive: false },
-    changedById: session.userId,
-  });
+  after(() =>
+    logHistory({
+      entityType: "RawMaterial",
+      entityId: id,
+      before,
+      after: { ...before, isActive: false },
+      changedById: session.userId,
+    })
+  );
 
   revalidatePath("/materials");
 }

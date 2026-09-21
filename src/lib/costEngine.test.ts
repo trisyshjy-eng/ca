@@ -142,4 +142,40 @@ describe("마진/부가세/소매가 비교 (스펙 7-5~7-7)", () => {
     expect(result.priceDifference).toBeCloseTo(798, 0);
     expect(result.priceDifferenceRate).toBeCloseTo(0.1332, 3);
   });
+
+  it("제안업체 마진률 미지정 시 중간단가는 총원가와 같다(기존 동작과 동일)", () => {
+    const result = calcPriceProposal({ totalCost: 3404.7, marginType: "AMOUNT", marginValue: 1315.3 });
+    expect(result.distributorPrice).toBeCloseTo(3404.7, 4);
+    expect(result.distributorMarginAmount).toBeCloseTo(0, 4);
+    expect(result.finalMarginAmount).toBeCloseTo(1315.3, 4);
+  });
+
+  it("제안업체 마진률 + 최종 마진율을 단계적으로 적용한다 (총원가 → 중간단가 → 제안단가)", () => {
+    const result = calcPriceProposal({
+      totalCost: 3400,
+      distributorMarginRate: 0.1,
+      marginType: "RATE",
+      marginValue: 0.2,
+    });
+    // 중간단가 = 3400 × 1.1 = 3740
+    expect(result.distributorPrice).toBeCloseTo(3740, 4);
+    expect(result.distributorMarginAmount).toBeCloseTo(340, 4);
+    // 제안단가(세전) = 3740 × 1.2 = 4488
+    expect(result.priceBeforeTax).toBeCloseTo(4488, 4);
+    expect(result.finalMarginAmount).toBeCloseTo(748, 4);
+    // 총 매출이익 = 제안업체마진액 + 최종마진액 = 340 + 748 = 1088
+    expect(result.grossProfit).toBeCloseTo(1088, 4);
+  });
+
+  it("제안업체 마진률 + 최종 고정 마진액을 단계적으로 적용한다", () => {
+    const result = calcPriceProposal({
+      totalCost: 3400,
+      distributorMarginRate: 0.1,
+      marginType: "AMOUNT",
+      marginValue: 500,
+    });
+    expect(result.distributorPrice).toBeCloseTo(3740, 4);
+    expect(result.priceBeforeTax).toBeCloseTo(4240, 4);
+    expect(result.finalMarginAmount).toBeCloseTo(500, 4);
+  });
 });

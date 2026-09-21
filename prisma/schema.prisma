@@ -194,10 +194,11 @@ model CostCalculation {
 }
 
 model PriceProposal {
-  id                  String         @id @default(cuid())
-  costCalculationId   String
-  marginType          MarginType // 마진 방식(율/정액)
-  marginValue         Float // 마진율(0~1) 또는 마진액(원)
+  id                   String         @id @default(cuid())
+  costCalculationId    String
+  distributorMarginRate Float         @default(0) // 제안업체 마진률(0~1) — 총원가 → 중간단가 산출에 사용
+  marginType          MarginType // 최종 마진 방식(율/정액) — 중간단가 → 제안단가(세전) 산출에 사용
+  marginValue         Float // 최종 마진율(0~1) 또는 마진액(원)
   priceBeforeTax      Float // 제안단가(세전)
   priceAfterTax       Float // 제안단가(세후) = 세전 × 1.1
   retailPrice         Float? // 결정 소매가 (선택 입력)

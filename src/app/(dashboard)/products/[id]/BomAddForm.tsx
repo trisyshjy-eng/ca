@@ -20,7 +20,7 @@ export function BomAddForm({ productId, rawMaterials }: { productId: string; raw
     <form action={formAction} ref={formRef} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
       <input type="hidden" name="productId" value={productId} />
       <div>
-        <label htmlFor="rawMaterialId">원물</label>
+        <label htmlFor="rawMaterialId">구성품목</label>
         <select id="rawMaterialId" name="rawMaterialId" required>
           <option value="">선택</option>
           {rawMaterials.map((m) => (
@@ -31,7 +31,7 @@ export function BomAddForm({ productId, rawMaterials }: { productId: string; raw
         </select>
       </div>
       <div>
-        <label htmlFor="groupCode">배합비 슬롯명</label>
+        <label htmlFor="groupCode">제품형태</label>
         <input id="groupCode" name="groupCode" type="text" placeholder="예: 소스" required />
       </div>
       <div>

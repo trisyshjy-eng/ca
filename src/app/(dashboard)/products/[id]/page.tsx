@@ -47,7 +47,10 @@ export default async function ProductDetailPage({
     <div>
       <div className="page-header">
         <h1>{product.name}</h1>
-        <Link href="/products">← 품목 목록</Link>
+        <div style={{ display: "flex", gap: 12 }}>
+          <Link href={`/products/${product.id}/edit`}>제품명/목표패키지 수정</Link>
+          <Link href="/products">← 품목 목록</Link>
+        </div>
       </div>
 
       <div className="card">
@@ -90,8 +93,8 @@ export default async function ProductDetailPage({
         <table className="mt-16">
           <thead>
             <tr>
-              <th>슬롯</th>
-              <th>원물</th>
+              <th>제품형태</th>
+              <th>구성품목</th>
               <th className="text-right">배합비</th>
               <th className="text-right">혼합비율</th>
               <th className="text-right">실사용중량(g)</th>

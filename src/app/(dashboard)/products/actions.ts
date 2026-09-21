@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth/dal";
 import { logHistory } from "@/lib/history";
@@ -28,7 +29,9 @@ export async function createProduct(
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "입력값을 확인해 주세요." };
 
   const created = await prisma.product.create({ data: parsed.data });
-  await logHistory({ entityType: "Product", entityId: created.id, after: created, changedById: session.userId });
+  after(() =>
+    logHistory({ entityType: "Product", entityId: created.id, after: created, changedById: session.userId })
+  );
 
   revalidatePath("/products");
   redirect(`/products/${created.id}`);
@@ -48,7 +51,9 @@ export async function updateProduct(
 
   const before = await prisma.product.findUnique({ where: { id } });
   const updated = await prisma.product.update({ where: { id }, data: parsed.data });
-  await logHistory({ entityType: "Product", entityId: id, before, after: updated, changedById: session.userId });
+  after(() =>
+    logHistory({ entityType: "Product", entityId: id, before, after: updated, changedById: session.userId })
+  );
 
   revalidatePath("/products");
   revalidatePath(`/products/${id}`);
@@ -62,13 +67,15 @@ export async function archiveProduct(formData: FormData) {
 
   const before = await prisma.product.findUnique({ where: { id } });
   await prisma.product.update({ where: { id }, data: { isActive: false } });
-  await logHistory({
-    entityType: "Product",
-    entityId: id,
-    before,
-    after: { ...before, isActive: false },
-    changedById: session.userId,
-  });
+  after(() =>
+    logHistory({
+      entityType: "Product",
+      entityId: id,
+      before,
+      after: { ...before, isActive: false },
+      changedById: session.userId,
+    })
+  );
 
   revalidatePath("/products");
 }
@@ -76,8 +83,8 @@ export async function archiveProduct(formData: FormData) {
 // --- BOM ---
 const BomSchema = z.object({
   productId: z.string().min(1),
-  rawMaterialId: z.string().min(1, "원물을 선택해 주세요."),
-  groupCode: z.string().min(1, "배합비 슬롯명을 입력해 주세요."),
+  rawMaterialId: z.string().min(1, "구성품목을 선택해 주세요."),
+  groupCode: z.string().min(1, "제품형태를 입력해 주세요."),
   mixRatio: z.coerce.number().gt(0, "배합비는 0보다 커야 합니다.").lte(1, "배합비는 1 이하여야 합니다."),
   blendRatio: z.coerce.number().gt(0, "혼합비율은 0보다 커야 합니다.").lte(1, "혼합비율은 1 이하여야 합니다."),
 });
@@ -101,7 +108,9 @@ export async function addBomLine(
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "입력값을 확인해 주세요." };
 
   const created = await prisma.productBOM.create({ data: parsed.data });
-  await logHistory({ entityType: "ProductBOM", entityId: created.id, after: created, changedById: session.userId });
+  after(() =>
+    logHistory({ entityType: "ProductBOM", entityId: created.id, after: created, changedById: session.userId })
+  );
 
   revalidatePath(`/products/${parsed.data.productId}`);
   return {};
@@ -115,7 +124,7 @@ export async function deleteBomLine(formData: FormData) {
 
   const before = await prisma.productBOM.findUnique({ where: { id } });
   await prisma.productBOM.delete({ where: { id } });
-  await logHistory({ entityType: "ProductBOM", entityId: id, before, changedById: session.userId });
+  after(() => logHistory({ entityType: "ProductBOM", entityId: id, before, changedById: session.userId }));
 
   revalidatePath(`/products/${productId}`);
 }
@@ -146,7 +155,9 @@ export async function addPackagingLine(
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "입력값을 확인해 주세요." };
 
   const created = await prisma.packagingCost.create({ data: parsed.data });
-  await logHistory({ entityType: "PackagingCost", entityId: created.id, after: created, changedById: session.userId });
+  after(() =>
+    logHistory({ entityType: "PackagingCost", entityId: created.id, after: created, changedById: session.userId })
+  );
 
   revalidatePath(`/products/${parsed.data.productId}`);
   return {};
@@ -160,7 +171,7 @@ export async function deletePackagingLine(formData: FormData) {
 
   const before = await prisma.packagingCost.findUnique({ where: { id } });
   await prisma.packagingCost.delete({ where: { id } });
-  await logHistory({ entityType: "PackagingCost", entityId: id, before, changedById: session.userId });
+  after(() => logHistory({ entityType: "PackagingCost", entityId: id, before, changedById: session.userId }));
 
   revalidatePath(`/products/${productId}`);
 }
@@ -189,7 +200,9 @@ export async function addProcessLine(
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "입력값을 확인해 주세요." };
 
   const created = await prisma.productProcess.create({ data: parsed.data });
-  await logHistory({ entityType: "ProductProcess", entityId: created.id, after: created, changedById: session.userId });
+  after(() =>
+    logHistory({ entityType: "ProductProcess", entityId: created.id, after: created, changedById: session.userId })
+  );
 
   revalidatePath(`/products/${parsed.data.productId}`);
   return {};
@@ -203,7 +216,7 @@ export async function deleteProcessLine(formData: FormData) {
 
   const before = await prisma.productProcess.findUnique({ where: { id } });
   await prisma.productProcess.delete({ where: { id } });
-  await logHistory({ entityType: "ProductProcess", entityId: id, before, changedById: session.userId });
+  after(() => logHistory({ entityType: "ProductProcess", entityId: id, before, changedById: session.userId }));
 
   revalidatePath(`/products/${productId}`);
 }

@@ -4,6 +4,7 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth/dal";
 import { logHistory } from "@/lib/history";
@@ -45,12 +46,14 @@ export async function createUser(
     },
   });
 
-  await logHistory({
-    entityType: "User",
-    entityId: created.id,
-    after: { loginId: created.loginId, name: created.name, role: created.role },
-    changedById: session.userId,
-  });
+  after(() =>
+    logHistory({
+      entityType: "User",
+      entityId: created.id,
+      after: { loginId: created.loginId, name: created.name, role: created.role },
+      changedById: session.userId,
+    })
+  );
 
   revalidatePath("/users");
   redirect("/users");
@@ -89,13 +92,15 @@ export async function updateUser(
     },
   });
 
-  await logHistory({
-    entityType: "User",
-    entityId: id,
-    before: before ? { loginId: before.loginId, name: before.name, role: before.role } : undefined,
-    after: { loginId: updated.loginId, name: updated.name, role: updated.role },
-    changedById: session.userId,
-  });
+  after(() =>
+    logHistory({
+      entityType: "User",
+      entityId: id,
+      before: before ? { loginId: before.loginId, name: before.name, role: before.role } : undefined,
+      after: { loginId: updated.loginId, name: updated.name, role: updated.role },
+      changedById: session.userId,
+    })
+  );
 
   revalidatePath("/users");
   redirect("/users");

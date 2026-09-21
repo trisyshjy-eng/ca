@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth/dal";
 import { logHistory } from "@/lib/history";
@@ -45,12 +46,14 @@ export async function createProposalRequest(
     },
   });
 
-  await logHistory({
-    entityType: "ProposalRequest",
-    entityId: created.id,
-    after: created,
-    changedById: session.userId,
-  });
+  after(() =>
+    logHistory({
+      entityType: "ProposalRequest",
+      entityId: created.id,
+      after: created,
+      changedById: session.userId,
+    })
+  );
 
   revalidatePath("/proposals");
   redirect(`/proposals/${created.id}`);
@@ -63,7 +66,7 @@ export async function deleteProposalRequest(formData: FormData) {
 
   const before = await prisma.proposalRequest.findUnique({ where: { id } });
   await prisma.proposalRequest.delete({ where: { id } });
-  await logHistory({ entityType: "ProposalRequest", entityId: id, before, changedById: session.userId });
+  after(() => logHistory({ entityType: "ProposalRequest", entityId: id, before, changedById: session.userId }));
 
   revalidatePath("/proposals");
 }
@@ -143,12 +146,14 @@ export async function runCostCalculation(
 
   await prisma.proposalRequest.update({ where: { id: proposal.id }, data: { status: "CALCULATING" } });
 
-  await logHistory({
-    entityType: "CostCalculation",
-    entityId: calculation.id,
-    after: calculation,
-    changedById: session.userId,
-  });
+  after(() =>
+    logHistory({
+      entityType: "CostCalculation",
+      entityId: calculation.id,
+      after: calculation,
+      changedById: session.userId,
+    })
+  );
 
   revalidatePath(`/proposals/${proposal.id}`);
   return {};
@@ -158,6 +163,7 @@ export async function runCostCalculation(
 const PriceProposalSchema = z.object({
   costCalculationId: z.string().min(1),
   proposalRequestId: z.string().min(1),
+  distributorMarginRate: z.coerce.number().min(0, "제안업체 마진률은 0 이상이어야 합니다.").default(0),
   marginType: z.enum(["RATE", "AMOUNT"]),
   marginValue: z.coerce.number(),
   retailPrice: z.coerce.number().optional(),
@@ -177,6 +183,7 @@ export async function createPriceProposal(
   const parsed = PriceProposalSchema.safeParse({
     costCalculationId: formData.get("costCalculationId"),
     proposalRequestId: formData.get("proposalRequestId"),
+    distributorMarginRate: formData.get("distributorMarginRate") ?? 0,
     marginType: formData.get("marginType"),
     marginValue: formData.get("marginValue"),
     retailPrice: retailPriceRaw ? retailPriceRaw : undefined,
@@ -188,6 +195,7 @@ export async function createPriceProposal(
 
   const result = calcPriceProposal({
     totalCost: calculation.totalCost,
+    distributorMarginRate: parsed.data.distributorMarginRate,
     marginType: parsed.data.marginType,
     marginValue: parsed.data.marginValue,
     retailPrice: parsed.data.retailPrice,
@@ -196,6 +204,7 @@ export async function createPriceProposal(
   const priceProposal = await prisma.priceProposal.create({
     data: {
       costCalculationId: calculation.id,
+      distributorMarginRate: parsed.data.distributorMarginRate,
       marginType: parsed.data.marginType,
       marginValue: parsed.data.marginValue,
       priceBeforeTax: result.priceBeforeTax,
@@ -208,12 +217,14 @@ export async function createPriceProposal(
 
   await prisma.proposalRequest.update({ where: { id: parsed.data.proposalRequestId }, data: { status: "PRICED" } });
 
-  await logHistory({
-    entityType: "PriceProposal",
-    entityId: priceProposal.id,
-    after: priceProposal,
-    changedById: session.userId,
-  });
+  after(() =>
+    logHistory({
+      entityType: "PriceProposal",
+      entityId: priceProposal.id,
+      after: priceProposal,
+      changedById: session.userId,
+    })
+  );
 
   revalidatePath(`/proposals/${parsed.data.proposalRequestId}`);
   return {};
@@ -242,13 +253,15 @@ export async function decidePriceProposal(formData: FormData) {
     data: { status: decision === "APPROVED" ? "APPROVED" : "REJECTED" },
   });
 
-  await logHistory({
-    entityType: "PriceProposal",
-    entityId: priceProposalId,
-    before,
-    after: updated,
-    changedById: session.userId,
-  });
+  after(() =>
+    logHistory({
+      entityType: "PriceProposal",
+      entityId: priceProposalId,
+      before,
+      after: updated,
+      changedById: session.userId,
+    })
+  );
 
   revalidatePath(`/proposals/${proposalRequestId}`);
 }
@@ -261,13 +274,15 @@ export async function markProposalSent(formData: FormData) {
   const before = await prisma.proposalRequest.findUnique({ where: { id } });
   const updated = await prisma.proposalRequest.update({ where: { id }, data: { status: "SENT" } });
 
-  await logHistory({
-    entityType: "ProposalRequest",
-    entityId: id,
-    before,
-    after: updated,
-    changedById: session.userId,
-  });
+  after(() =>
+    logHistory({
+      entityType: "ProposalRequest",
+      entityId: id,
+      before,
+      after: updated,
+      changedById: session.userId,
+    })
+  );
 
   revalidatePath(`/proposals/${id}`);
   revalidatePath("/proposals");

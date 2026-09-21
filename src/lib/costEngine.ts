@@ -56,15 +56,19 @@ export interface CostCalculationResult {
 
 export interface MarginInput {
   totalCost: number;
+  distributorMarginRate?: number; // 제안업체 마진률(0~1). 총원가 → 중간단가 산출에 사용, 기본 0
   marginType: "RATE" | "AMOUNT";
-  marginValue: number; // 마진율(0~1) 또는 마진액(원)
+  marginValue: number; // 최종 마진율(0~1) 또는 마진액(원). 중간단가 → 제안단가(세전) 산출에 사용
   vatRate?: number; // 부가세율, 기본 0.1
   retailPrice?: number; // 결정 소매가 (선택)
 }
 
 export interface PriceProposalResult {
-  priceBeforeTax: number; // 제안단가(세전)
-  grossProfit: number; // 매출이익
+  distributorPrice: number; // 중간단가 = 총원가 × (1 + 제안업체마진률)
+  distributorMarginAmount: number; // 제안업체 마진액(세전) = 중간단가 - 총원가
+  priceBeforeTax: number; // 제안단가(세전) = 중간단가 × (1+최종마진율) 또는 중간단가+최종마진액
+  finalMarginAmount: number; // 최종 마진액(세전) = 제안단가(세전) - 중간단가
+  grossProfit: number; // 총 매출이익(세전) = 제안단가(세전) - 총원가 (= 제안업체마진액 + 최종마진액)
   grossProfitRate: number; // 매출이익률
   priceAfterTax: number; // 최종 제안단가(세후)
   priceDifference: number | null; // 차액
@@ -142,10 +146,18 @@ export function calcCost(input: CostCalculationInput): CostCalculationResult {
 
 export function calcPriceProposal(input: MarginInput): PriceProposalResult {
   const vatRate = input.vatRate ?? 0.1;
+  const distributorMarginRate = input.distributorMarginRate ?? 0;
+
+  // 1단계: 총원가 → 중간단가 (제안업체 마진 반영)
+  const distributorPrice = input.totalCost * (1 + distributorMarginRate);
+  const distributorMarginAmount = distributorPrice - input.totalCost;
+
+  // 2단계: 중간단가 → 제안단가(세전) (최종 마진 반영)
   const priceBeforeTax =
     input.marginType === "RATE"
-      ? input.totalCost * (1 + input.marginValue)
-      : input.totalCost + input.marginValue;
+      ? distributorPrice * (1 + input.marginValue)
+      : distributorPrice + input.marginValue;
+  const finalMarginAmount = priceBeforeTax - distributorPrice;
 
   const grossProfit = priceBeforeTax - input.totalCost;
   const grossProfitRate = priceBeforeTax === 0 ? 0 : grossProfit / priceBeforeTax;
@@ -159,7 +171,10 @@ export function calcPriceProposal(input: MarginInput): PriceProposalResult {
   }
 
   return {
+    distributorPrice,
+    distributorMarginAmount,
     priceBeforeTax,
+    finalMarginAmount,
     grossProfit,
     grossProfitRate,
     priceAfterTax,
@@ -187,7 +202,7 @@ export function validateBom(lines: BomLineInput[]): BomValidationResult {
       const existing = groupMixRatios.get(line.groupCode)!;
       if (Math.abs(existing - line.mixRatio) > TOLERANCE) {
         errors.push(
-          `그룹 "${line.groupCode}"의 배합비 값이 슬롯 내에서 일치하지 않습니다 (${existing} vs ${line.mixRatio}).`
+          `제품형태 "${line.groupCode}"의 배합비 값이 일치하지 않습니다 (${existing} vs ${line.mixRatio}).`
         );
       }
     } else {
@@ -204,7 +219,7 @@ export function validateBom(lines: BomLineInput[]): BomValidationResult {
 
   for (const [groupCode, sum] of groupBlendSums.entries()) {
     if (Math.abs(sum - 1) > TOLERANCE) {
-      errors.push(`그룹 "${groupCode}"의 혼합비율 합계가 1이 아닙니다 (현재 합계: ${sum}).`);
+      errors.push(`제품형태 "${groupCode}"의 혼합비율 합계가 1이 아닙니다 (현재 합계: ${sum}).`);
     }
   }
 

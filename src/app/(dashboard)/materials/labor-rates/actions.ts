@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth/dal";
 import { logHistory } from "@/lib/history";
@@ -32,7 +33,9 @@ export async function createLaborRate(
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "입력값을 확인해 주세요." };
 
   const created = await prisma.laborRate.create({ data: parsed.data });
-  await logHistory({ entityType: "LaborRate", entityId: created.id, after: created, changedById: session.userId });
+  after(() =>
+    logHistory({ entityType: "LaborRate", entityId: created.id, after: created, changedById: session.userId })
+  );
 
   revalidatePath("/materials/labor-rates");
   redirect("/materials/labor-rates");
@@ -49,7 +52,9 @@ export async function updateLaborRate(
 
   const before = await prisma.laborRate.findUnique({ where: { id } });
   const updated = await prisma.laborRate.update({ where: { id }, data: parsed.data });
-  await logHistory({ entityType: "LaborRate", entityId: id, before, after: updated, changedById: session.userId });
+  after(() =>
+    logHistory({ entityType: "LaborRate", entityId: id, before, after: updated, changedById: session.userId })
+  );
 
   revalidatePath("/materials/labor-rates");
   redirect("/materials/labor-rates");
@@ -62,13 +67,15 @@ export async function deleteLaborRate(formData: FormData) {
 
   const before = await prisma.laborRate.findUnique({ where: { id } });
   await prisma.laborRate.update({ where: { id }, data: { isActive: false } });
-  await logHistory({
-    entityType: "LaborRate",
-    entityId: id,
-    before,
-    after: { ...before, isActive: false },
-    changedById: session.userId,
-  });
+  after(() =>
+    logHistory({
+      entityType: "LaborRate",
+      entityId: id,
+      before,
+      after: { ...before, isActive: false },
+      changedById: session.userId,
+    })
+  );
 
   revalidatePath("/materials/labor-rates");
 }

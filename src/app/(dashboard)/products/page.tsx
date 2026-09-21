@@ -47,12 +47,15 @@ export default async function ProductsPage() {
                 <td className="text-right">{p._count.packagingCosts}</td>
                 <td className="text-right">{p._count.processes}</td>
                 <td>
-                  <form action={archiveProduct}>
-                    <input type="hidden" name="id" value={p.id} />
-                    <button type="submit" className="secondary" style={{ margin: 0, padding: "2px 8px" }}>
-                      비활성화
-                    </button>
-                  </form>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <Link href={`/products/${p.id}/edit`}>수정</Link>
+                    <form action={archiveProduct}>
+                      <input type="hidden" name="id" value={p.id} />
+                      <button type="submit" className="secondary" style={{ margin: 0, padding: "2px 8px" }}>
+                        비활성화
+                      </button>
+                    </form>
+                  </div>
                 </td>
               </tr>
             ))}

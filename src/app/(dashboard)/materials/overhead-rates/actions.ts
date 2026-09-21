@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth/dal";
 import { logHistory } from "@/lib/history";
@@ -36,12 +37,14 @@ export async function createOverheadRate(
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "입력값을 확인해 주세요." };
 
   const created = await prisma.overheadRate.create({ data: parsed.data });
-  await logHistory({
-    entityType: "OverheadRate",
-    entityId: created.id,
-    after: created,
-    changedById: session.userId,
-  });
+  after(() =>
+    logHistory({
+      entityType: "OverheadRate",
+      entityId: created.id,
+      after: created,
+      changedById: session.userId,
+    })
+  );
 
   revalidatePath("/materials/overhead-rates");
   redirect("/materials/overhead-rates");
@@ -58,13 +61,15 @@ export async function updateOverheadRate(
 
   const before = await prisma.overheadRate.findUnique({ where: { id } });
   const updated = await prisma.overheadRate.update({ where: { id }, data: parsed.data });
-  await logHistory({
-    entityType: "OverheadRate",
-    entityId: id,
-    before,
-    after: updated,
-    changedById: session.userId,
-  });
+  after(() =>
+    logHistory({
+      entityType: "OverheadRate",
+      entityId: id,
+      before,
+      after: updated,
+      changedById: session.userId,
+    })
+  );
 
   revalidatePath("/materials/overhead-rates");
   redirect("/materials/overhead-rates");
@@ -77,13 +82,15 @@ export async function deleteOverheadRate(formData: FormData) {
 
   const before = await prisma.overheadRate.findUnique({ where: { id } });
   await prisma.overheadRate.update({ where: { id }, data: { isActive: false } });
-  await logHistory({
-    entityType: "OverheadRate",
-    entityId: id,
-    before,
-    after: { ...before, isActive: false },
-    changedById: session.userId,
-  });
+  after(() =>
+    logHistory({
+      entityType: "OverheadRate",
+      entityId: id,
+      before,
+      after: { ...before, isActive: false },
+      changedById: session.userId,
+    })
+  );
 
   revalidatePath("/materials/overhead-rates");
 }

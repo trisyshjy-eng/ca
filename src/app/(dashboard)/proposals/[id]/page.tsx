@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { CalculationForm } from "./CalculationForm";
 import { PriceProposalForm } from "./PriceProposalForm";
 import { decidePriceProposal, markProposalSent } from "../actions";
+import { calcPriceProposal } from "@/lib/costEngine";
 
 const STATUS_LABELS: Record<string, string> = {
   REQUESTED: "접수",
@@ -158,7 +159,11 @@ export default async function ProposalDetailPage({
 
           {canManage && (
             <div className="mt-16">
-              <PriceProposalForm costCalculationId={latestCalculation.id} proposalRequestId={proposal.id} />
+              <PriceProposalForm
+                costCalculationId={latestCalculation.id}
+                proposalRequestId={proposal.id}
+                totalCost={latestCalculation.totalCost}
+              />
             </div>
           )}
 
@@ -166,8 +171,11 @@ export default async function ProposalDetailPage({
             <table className="mt-16">
               <thead>
                 <tr>
-                  <th>마진방식</th>
-                  <th className="text-right">마진값</th>
+                  <th className="text-right">제안업체 마진률</th>
+                  <th className="text-right">제안업체 마진액(세전)</th>
+                  <th>최종마진방식</th>
+                  <th className="text-right">최종마진값</th>
+                  <th className="text-right">최종 마진액(세전)</th>
                   <th className="text-right">제안단가(세전)</th>
                   <th className="text-right">제안단가(세후)</th>
                   <th className="text-right">결정소매가</th>
@@ -178,12 +186,22 @@ export default async function ProposalDetailPage({
                 </tr>
               </thead>
               <tbody>
-                {latestCalculation.priceProposals.map((pp) => (
-                  <tr key={pp.id}>
+                {latestCalculation.priceProposals.map((pp) => {
+                  const preview = calcPriceProposal({
+                    totalCost: latestCalculation.totalCost,
+                    distributorMarginRate: pp.distributorMarginRate,
+                    marginType: pp.marginType,
+                    marginValue: pp.marginValue,
+                  });
+                  return (
+                <tr key={pp.id}>
+                    <td className="text-right">{(pp.distributorMarginRate * 100).toFixed(2)}%</td>
+                    <td className="text-right">{fmt(preview.distributorMarginAmount)}</td>
                     <td>{pp.marginType === "RATE" ? "마진율" : "마진액"}</td>
                     <td className="text-right">
                       {pp.marginType === "RATE" ? `${(pp.marginValue * 100).toFixed(2)}%` : fmt(pp.marginValue)}
                     </td>
+                    <td className="text-right">{fmt(preview.finalMarginAmount)}</td>
                     <td className="text-right">{fmt(pp.priceBeforeTax)}</td>
                     <td className="text-right">
                       <strong>{fmt(pp.priceAfterTax)}</strong>
@@ -233,7 +251,8 @@ export default async function ProposalDetailPage({
                       </td>
                     )}
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           )}
