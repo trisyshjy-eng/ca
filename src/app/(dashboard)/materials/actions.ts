@@ -10,6 +10,7 @@ import { logHistory } from "@/lib/history";
 
 const RawMaterialSchema = z.object({
   name: z.string().min(1, "자재명을 입력해 주세요."),
+  origin: z.string().optional(),
   vendor: z.string().optional(),
   unitCost: z.coerce.number().positive("원물원가는 0보다 커야 합니다."),
   purchaseWeight: z.coerce.number().positive("구매중량은 0보다 커야 합니다."),
@@ -23,6 +24,7 @@ export interface RawMaterialFormState {
 function parseRawMaterialForm(formData: FormData) {
   return RawMaterialSchema.safeParse({
     name: formData.get("name"),
+    origin: formData.get("origin") || undefined,
     vendor: formData.get("vendor") || undefined,
     unitCost: formData.get("unitCost"),
     purchaseWeight: formData.get("purchaseWeight"),

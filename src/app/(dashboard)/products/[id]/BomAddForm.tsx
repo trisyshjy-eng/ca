@@ -26,6 +26,7 @@ export function BomAddForm({ productId, rawMaterials }: { productId: string; raw
           {rawMaterials.map((m) => (
             <option key={m.id} value={m.id}>
               {m.name}
+              {m.origin ? ` (${m.origin})` : ""}
             </option>
           ))}
         </select>

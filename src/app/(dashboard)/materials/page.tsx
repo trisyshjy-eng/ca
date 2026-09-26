@@ -39,6 +39,7 @@ export default async function MaterialsPage() {
           <thead>
             <tr>
               <th>자재명</th>
+              <th>원산지</th>
               <th>거래처</th>
               <th className="text-right">원물원가</th>
               <th className="text-right">구매중량(g)</th>
@@ -52,6 +53,7 @@ export default async function MaterialsPage() {
             {materials.map((m) => (
               <tr key={m.id}>
                 <td>{m.name}</td>
+                <td>{m.origin ?? "-"}</td>
                 <td>{m.vendor ?? "-"}</td>
                 <td className="text-right">{m.unitCost.toLocaleString()}</td>
                 <td className="text-right">{m.purchaseWeight.toLocaleString()}</td>
@@ -77,7 +79,7 @@ export default async function MaterialsPage() {
             ))}
             {materials.length === 0 && (
               <tr>
-                <td colSpan={8} className="text-muted">
+                <td colSpan={9} className="text-muted">
                   등록된 원물/자재가 없습니다.
                 </td>
               </tr>

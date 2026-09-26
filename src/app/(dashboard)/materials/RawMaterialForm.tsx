@@ -23,6 +23,10 @@ export function RawMaterialForm({
           <input id="name" name="name" type="text" defaultValue={defaultValues?.name} required />
         </div>
         <div>
+          <label htmlFor="origin">원산지</label>
+          <input id="origin" name="origin" type="text" defaultValue={defaultValues?.origin ?? ""} placeholder="예: 태국, 베트남" />
+        </div>
+        <div>
           <label htmlFor="vendor">거래처</label>
           <input id="vendor" name="vendor" type="text" defaultValue={defaultValues?.vendor ?? ""} />
         </div>
