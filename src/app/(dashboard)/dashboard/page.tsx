@@ -1,5 +1,6 @@
 import { requireSession } from "@/lib/auth/dal";
 import { prisma } from "@/lib/prisma";
+import { formatDate, formatDateTime } from "@/lib/format";
 
 export default async function DashboardPage() {
   const session = await requireSession();
@@ -42,7 +43,7 @@ export default async function DashboardPage() {
               <tr key={req.id}>
                 <td>{req.companyName}</td>
                 <td>{req.product.name}</td>
-                <td>{req.requestDate.toLocaleDateString("ko-KR")}</td>
+                <td>{formatDate(req.requestDate)}</td>
                 <td>{req.requestedQty.toLocaleString()}</td>
                 <td>
                   <span className="badge">{req.status}</span>
@@ -79,7 +80,7 @@ export default async function DashboardPage() {
                 <td>{calc.proposalRequest.product.name}</td>
                 <td>{Math.round(calc.manufacturingCost).toLocaleString()}</td>
                 <td>{Math.round(calc.totalCost).toLocaleString()}</td>
-                <td>{calc.calculatedAt.toLocaleString("ko-KR")}</td>
+                <td>{formatDateTime(calc.calculatedAt)}</td>
               </tr>
             ))}
             {recentCalculations.length === 0 && (

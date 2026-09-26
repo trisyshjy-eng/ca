@@ -6,6 +6,7 @@ import { CalculationForm } from "./CalculationForm";
 import { PriceProposalForm } from "./PriceProposalForm";
 import { decidePriceProposal, markProposalSent } from "../actions";
 import { calcPriceProposal } from "@/lib/costEngine";
+import { formatDate, formatDateTime } from "@/lib/format";
 
 const STATUS_LABELS: Record<string, string> = {
   REQUESTED: "접수",
@@ -76,7 +77,7 @@ export default async function ProposalDetailPage({
           </div>
           <div>
             <span className="text-muted">요청일</span>
-            <div>{proposal.requestDate.toLocaleDateString("ko-KR")}</div>
+            <div>{formatDate(proposal.requestDate)}</div>
           </div>
           <div>
             <span className="text-muted">요청수량</span>
@@ -148,7 +149,7 @@ export default async function ProposalDetailPage({
                     <td className="text-right">
                       <strong>{fmt(latestCalculation.totalCost)}</strong>
                     </td>
-                    <td>{latestCalculation.calculatedAt.toLocaleString("ko-KR")}</td>
+                    <td>{formatDateTime(latestCalculation.calculatedAt)}</td>
                   </tr>
                 </tbody>
               </table>
@@ -277,7 +278,7 @@ export default async function ProposalDetailPage({
                   <td className="text-right">{fmt(c.manufacturingCost)}</td>
                   <td className="text-right">{fmt(c.totalCost)}</td>
                   <td>{c.calculatedBy.name}</td>
-                  <td>{c.calculatedAt.toLocaleString("ko-KR")}</td>
+                  <td>{formatDateTime(c.calculatedAt)}</td>
                 </tr>
               ))}
             </tbody>

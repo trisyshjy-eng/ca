@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireSession } from "@/lib/auth/dal";
 import { prisma } from "@/lib/prisma";
 import { deleteProposalRequest } from "./actions";
+import { formatDate } from "@/lib/format";
 
 const STATUS_LABELS: Record<string, string> = {
   REQUESTED: "접수",
@@ -56,7 +57,7 @@ export default async function ProposalsPage() {
                 </td>
                 <td>{p.contactPerson}</td>
                 <td>{p.product.name}</td>
-                <td>{p.requestDate.toLocaleDateString("ko-KR")}</td>
+                <td>{formatDate(p.requestDate)}</td>
                 <td className="text-right">{p.requestedQty.toLocaleString()}</td>
                 <td>
                   <span className="badge">{STATUS_LABELS[p.status]}</span>

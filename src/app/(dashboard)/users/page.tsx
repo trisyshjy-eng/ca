@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireRole } from "@/lib/auth/dal";
 import { prisma } from "@/lib/prisma";
 import { ROLE_LABELS } from "@/lib/auth/roles";
+import { formatDate } from "@/lib/format";
 
 export default async function UsersPage() {
   await requireRole("ADMIN");
@@ -39,7 +40,7 @@ export default async function UsersPage() {
                 <td>
                   <span className="badge">{ROLE_LABELS[u.role]}</span>
                 </td>
-                <td>{u.createdAt.toLocaleDateString("ko-KR")}</td>
+                <td>{formatDate(u.createdAt)}</td>
                 <td>
                   <Link href={`/users/${u.id}/edit`}>수정</Link>
                 </td>

@@ -3,6 +3,7 @@ import ExcelJS from "exceljs";
 import { verifySession } from "@/lib/auth/dal";
 import { getProposalDocumentData } from "@/lib/documents";
 import { calcPriceProposal } from "@/lib/costEngine";
+import { formatDate } from "@/lib/format";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await verifySession();
@@ -41,7 +42,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     ["업체명", proposal.companyName],
     ["담당자", proposal.contactPerson],
     ["품목명", proposal.product.name],
-    ["요청일", proposal.requestDate.toLocaleDateString("ko-KR")],
+    ["요청일", formatDate(proposal.requestDate)],
     ["요청수량", proposal.requestedQty],
     ["재료비", Math.round(calculation.materialCost)],
     ["노무비", Math.round(calculation.laborCost)],

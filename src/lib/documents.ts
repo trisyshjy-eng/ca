@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
+import { formatDate } from "@/lib/format";
 
 export async function getProposalDocumentData(proposalRequestId: string) {
   const proposal = await prisma.proposalRequest.findUnique({
@@ -38,7 +39,7 @@ export function buildProposalHtml(data: ProposalDocumentData): string {
   const { proposal, priceProposal } = data;
   const unitPrice = priceProposal?.priceAfterTax ?? 0;
   const totalAmount = unitPrice * proposal.requestedQty;
-  const issuedAt = new Date().toLocaleDateString("ko-KR");
+  const issuedAt = formatDate(new Date());
 
   return `<!DOCTYPE html>
 <html lang="ko">
@@ -65,7 +66,7 @@ export function buildProposalHtml(data: ProposalDocumentData): string {
   <table>
     <tr><th>업체명</th><td>${proposal.companyName}</td><th>담당자</th><td>${proposal.contactPerson}</td></tr>
     <tr><th>품목명</th><td>${proposal.product.name}</td><th>요청수량</th><td>${proposal.requestedQty.toLocaleString("ko-KR")}</td></tr>
-    <tr><th>요청일</th><td>${proposal.requestDate.toLocaleDateString("ko-KR")}</td><th>단위 중량</th><td>${proposal.product.targetWeight.toLocaleString("ko-KR")} g</td></tr>
+    <tr><th>요청일</th><td>${formatDate(proposal.requestDate)}</td><th>단위 중량</th><td>${proposal.product.targetWeight.toLocaleString("ko-KR")} g</td></tr>
   </table>
 
   <table class="price-table">

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireSession } from "@/lib/auth/dal";
 import { prisma } from "@/lib/prisma";
+import { formatDateTime } from "@/lib/format";
 
 function fmt(n: number) {
   return n.toLocaleString(undefined, { maximumFractionDigits: 1 });
@@ -88,7 +89,7 @@ export default async function HistoryPage({
                 {canSeeCostDetail && <td className="text-right">{fmt(c.manufacturingCost)}</td>}
                 {canSeeCostDetail && <td className="text-right">{fmt(c.totalCost)}</td>}
                 <td className="text-right">{c.priceProposals[0] ? fmt(c.priceProposals[0].priceAfterTax) : "-"}</td>
-                <td>{c.calculatedAt.toLocaleString("ko-KR")}</td>
+                <td>{formatDateTime(c.calculatedAt)}</td>
               </tr>
             ))}
             {calculations.length === 0 && (
@@ -121,7 +122,7 @@ export default async function HistoryPage({
                     {log.entityType} <span className="text-muted">({log.entityId.slice(0, 8)})</span>
                   </td>
                   <td>{log.changedBy.name}</td>
-                  <td>{log.changedAt.toLocaleString("ko-KR")}</td>
+                  <td>{formatDateTime(log.changedAt)}</td>
                   <td>
                     <details>
                       <summary>보기</summary>
